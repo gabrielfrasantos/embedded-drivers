@@ -1,5 +1,4 @@
 #include "drivers/display/tft/Ssd2119.hpp"
-#include "drivers/display/tft/DisplayTft.hpp"
 
 namespace drivers::display::tft
 {
@@ -185,7 +184,7 @@ namespace drivers::display::tft
             return content;
         }
 
-        constexpr uint16_t ToDriverColor(const Color& color)
+        constexpr uint16_t ToDriverColor(const hal::Color& color)
         {
             auto c = color.Combination();
 
@@ -210,23 +209,23 @@ namespace drivers::display::tft
             });
     }
 
-    void Ssd2119Sync::DrawPixel(std::size_t x, std::size_t y, Color color, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawPixel(Point point, hal::Color color, const infra::Function<void()>& onDone)
     {
-        PrepareToDraw(x, y);
+        PrepareToDraw(point.x, point.y);
         WriteData(ToDriverColor(color));
         onDone();
     }
 
-    void Ssd2119Sync::DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawHorizontalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
         WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
-        PrepareToDraw(xStart, y);
+        PrepareToDraw(point.x, point.y);
 
         auto c = ToDriverColor(color);
 
-        while(xStart++ <= xEnd)
+        while(length-- > 0)
         {
             WriteData(c);
         }
@@ -234,16 +233,16 @@ namespace drivers::display::tft
         onDone();
     }
 
-    void Ssd2119Sync::DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawVerticalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
         WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).vertical);
 
-        PrepareToDraw(x, yStart);
+        PrepareToDraw(point.x, point.y);
 
         auto c = ToDriverColor(color);
 
-        while(yStart++ <= yEnd)
+        while(length-- > 0)
         {
             WriteData(c);
         }
@@ -251,32 +250,32 @@ namespace drivers::display::tft
         onDone();
     }
 
-    void Ssd2119Sync::DrawRectangle(std::size_t xStart, std::size_t xEnd, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawFilledRectangle(Point point, Dimension dim, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
         WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
         WriteCommand(horizontalRamStart);
-        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscape)
-            WriteData(GetX(xEnd, yEnd));
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
+            WriteData(GetX(point.x + dim.width, point.y + dim.height));
         else
-            WriteData(GetX(xStart, yStart));
+            WriteData(GetX(point.x, point.y));
 
         WriteCommand(horizontalRamEnd);
-        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscape)
-            WriteData(GetX(xStart, yStart));
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
+            WriteData(GetX(point.x, point.y));
         else
-            WriteData(GetX(xEnd, yEnd));
+            WriteData(GetX(point.x + dim.width, point.y + dim.height));
 
         WriteCommand(verticalRamPosition);
-        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscapeFlip)
-            WriteData(GetY(xStart, yStart) | (GetY(xEnd, yEnd) << 8));
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscapeFlip)
+            WriteData(GetY(point.x, point.y) | (GetY(point.x + dim.width, point.y + dim.height) << 8));
         else
-            WriteData(GetY(xEnd, yEnd) | (GetY(xStart, yStart) << 8));
+            WriteData(GetY(point.x + dim.width, point.y + dim.height) | (GetY(point.x, point.y) << 8));
 
-        PrepareToDraw(xStart, yStart);
+        PrepareToDraw(point.x, point.y);
 
-        for(size_t i = ((xEnd - xStart + 1) * (yEnd - yStart + 1)); i >= 0; i--)
+        for(size_t i = (dim.width * dim.height); i >= 0; i--)
             WriteData(ToDriverColor(color));
 
         SetDimension(config.width, config.height);
@@ -284,7 +283,7 @@ namespace drivers::display::tft
         onDone();
     }
 
-    void Ssd2119Sync::DrawBackground(Color color, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawBackground(hal::Color color, const infra::Function<void()>& onDone)
     {
         PrepareToDraw(0, 0);
 
@@ -294,6 +293,21 @@ namespace drivers::display::tft
             WriteData(ToDriverColor(color));
 
         onDone();
+    }
+
+    void Ssd2119Sync::DrawImage(Point startPoint, const Image& image, const infra::Function<void()>& onDone)
+    {
+
+    }
+
+    std::size_t Ssd2119Sync::Width() const
+    {
+        return config.width;
+    }
+
+    std::size_t Ssd2119Sync::Height() const
+    {
+        return config.height;
     }
 
     void Ssd2119Sync::Reset(const infra::Function<void()>& onReset)
@@ -309,7 +323,7 @@ namespace drivers::display::tft
                     this->onReset();
                 });
             });
-        
+
     }
 
     void Ssd2119Sync::Initialize(const Config& config)
@@ -356,7 +370,7 @@ namespace drivers::display::tft
                 this->onDone();
             });
     }
-    
+
     void Ssd2119Sync::SetGamma()
     {
         WriteCommand(gammaControl1);
@@ -406,13 +420,13 @@ namespace drivers::display::tft
     {
         switch (config.orientation)
         {
-            case Ssd2119Sync::Config::Orientation::portrait:
+            case Orientation::portrait:
                 return width - y - 1;
 
-            case Ssd2119Sync::Config::Orientation::landscape:
+            case Orientation::landscape:
                 return width - x - 1;
 
-            case Ssd2119Sync::Config::Orientation::portraitFlip:
+            case Orientation::portraitFlip:
                 return y;
 
             default:
@@ -424,13 +438,13 @@ namespace drivers::display::tft
     {
         switch (config.orientation)
         {
-            case Ssd2119Sync::Config::Orientation::portrait:
+            case Orientation::portrait:
                 return x;
 
-            case Ssd2119Sync::Config::Orientation::landscape:
+            case Orientation::landscape:
                 return height - y - 1;
 
-            case Ssd2119Sync::Config::Orientation::portraitFlip:
+            case Orientation::portraitFlip:
                 return height - x - 1;
 
             default:

@@ -1,7 +1,7 @@
 #ifndef DRIVERS_DISPLAY_TFT_SSD2119_H
 #define DRIVERS_DISPLAY_TFT_SSD2119_H
 
-#include "drivers/display/tft/DisplayTft.hpp"
+#include "hal/interfaces/DisplayLcd.hpp"
 #include "hal/synchronous_interfaces/SynchronousSpi.hpp"
 #include "hal/interfaces/Gpio.hpp"
 #include "infra/timer/Timer.hpp"
@@ -9,21 +9,13 @@
 namespace drivers::display::tft
 {
     class Ssd2119Sync
-        : public DisplayTft
+        : public hal::DisplayLcd
     {
     public:
         struct Config
         {
             constexpr Config()
             {}
-
-            enum class Orientation : uint8_t
-            {
-                portrait,
-                landscape,
-                portraitFlip,
-                landscapeFlip,
-            };
 
             enum class ColorMode : uint8_t
             {
@@ -53,11 +45,15 @@ namespace drivers::display::tft
 
         Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const infra::Function<void()>& onDone, const Config& config = Config());
 
-        void DrawPixel(std::size_t x, std::size_t y, Color color, const infra::Function<void()>& onDone) override;
-        void DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color, const infra::Function<void()>& onDone) override;
-        void DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) override;
-        void DrawRectangle(std::size_t xStart, std::size_t xEnd, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) override;
-        void DrawBackground(Color color, const infra::Function<void()>& onDone) override;
+        void DrawPixel(Point point, hal::Color color, const infra::Function<void()>& onDone) override;
+        void DrawHorizontalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone) override;
+        void DrawVerticalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone) override;
+        void DrawFilledRectangle(Point point, Dimension dim, hal::Color color, const infra::Function<void()>& onDone) override;
+        void DrawBackground(hal::Color color, const infra::Function<void()>& onDone) override;
+        void DrawImage(Point startPoint, const Image& image, const infra::Function<void()>& onDone) override;
+
+        std::size_t Width() const override;
+        std::size_t Height() const override;
 
     private:
         void WriteData(uint16_t data);

@@ -14,7 +14,6 @@ target_link_libraries(drivers.display.tft PUBLIC
 )
 
 target_sources(drivers.display.tft PRIVATE
-    DisplayTft.hpp
     Ssd2119.cpp
     Ssd2119.hpp
 )

@@ -51,11 +51,13 @@ namespace drivers::display::tft
             RgbInterface rgbInterface = RgbInterface::ignoreControlPins;
         };
 
-        Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const Config& config = Config());
+        Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const infra::Function<void()>& onDone, const Config& config = Config());
 
-        void DrawPixel(std::size_t x, std::size_t y, Color color) override;
-        void DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color) override;
-        void DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color) override;
+        void DrawPixel(std::size_t x, std::size_t y, Color color, const infra::Function<void()>& onDone) override;
+        void DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color, const infra::Function<void()>& onDone) override;
+        void DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) override;
+        void DrawRectangle(std::size_t xStart, std::size_t xEnd, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) override;
+        void DrawBackground(Color color, const infra::Function<void()>& onDone) override;
 
     private:
         void WriteData(uint16_t data);
@@ -88,6 +90,7 @@ namespace drivers::display::tft
         uint16_t entryMode;
         infra::TimerSingleShot timer;
         infra::Function<void()> onReset;
+        infra::Function<void()> onDone;
 
         constexpr static std::array<Direction, 4> direction {{ {0x28, 0x20}, {0x00, 0x08}, {0x18, 0x10}, {0x30, 0x38} }};
     };

@@ -2,6 +2,7 @@
 #define DRIVERS_DISPLAY_TFT_INTERFACE_H
 
 #include <cstdint>
+#include "infra/util/AutoResetFunction.hpp"
 
 namespace drivers::display::tft
 {
@@ -10,6 +11,10 @@ namespace drivers::display::tft
     public:
         Color(uint8_t red, uint8_t green, uint8_t blue)
             : color(red << 16 | green << 8 | blue)
+        {}
+
+        Color(uint32_t color)
+            : color(color)
         {}
 
         uint8_t Red() const
@@ -41,9 +46,11 @@ namespace drivers::display::tft
     public:
         virtual ~DisplayTft() = default;
 
-        virtual void DrawPixel(std::size_t x, std::size_t y, Color color) = 0;
-        virtual void DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color) = 0;
-        virtual void DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color) = 0;
+        virtual void DrawPixel(std::size_t x, std::size_t y, Color color, const infra::Function<void()>& onDone) = 0;
+        virtual void DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color, const infra::Function<void()>& onDone) = 0;
+        virtual void DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) = 0;
+        virtual void DrawRectangle(std::size_t xStart, std::size_t xEnd, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone) = 0;
+        virtual void DrawBackground(Color color, const infra::Function<void()>& onDone) = 0;
     };
 }
 

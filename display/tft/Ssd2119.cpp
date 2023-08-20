@@ -193,7 +193,7 @@ namespace drivers::display::tft
         }
     }
 
-    Ssd2119Sync::Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const Config& config)
+    Ssd2119Sync::Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const infra::Function<void()>& onDone, const Config& config)
         : spi(spi)
         , chipSelect(chipSelect)
         , reset(reset)
@@ -202,6 +202,7 @@ namespace drivers::display::tft
         , width(config.width)
         , height(config.height)
         , entryMode(EntryMode(config.colorMode, config.rgbInterface, WriteRamMode::spi, config.clockSource, WriteRamMethodsFor262kColorMode::a, IncrementMode::horizontalIncVerticalInc, AddressCounterDirection::horizontal))
+        , onDone(onDone)
     {
         Reset([this]()
             {
@@ -209,13 +210,14 @@ namespace drivers::display::tft
             });
     }
 
-    void Ssd2119Sync::DrawPixel(std::size_t x, std::size_t y, Color color)
+    void Ssd2119Sync::DrawPixel(std::size_t x, std::size_t y, Color color, const infra::Function<void()>& onDone)
     {
         PrepareToDraw(x, y);
         WriteData(ToDriverColor(color));
+        onDone();
     }
 
-    void Ssd2119Sync::DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color)
+    void Ssd2119Sync::DrawHorizontalLine(std::size_t xStart, std::size_t xEnd, std::size_t y, Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
         WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
@@ -228,9 +230,11 @@ namespace drivers::display::tft
         {
             WriteData(c);
         }
+
+        onDone();
     }
 
-    void Ssd2119Sync::DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color)
+    void Ssd2119Sync::DrawVerticalLine(std::size_t x, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
         WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).vertical);
@@ -243,6 +247,53 @@ namespace drivers::display::tft
         {
             WriteData(c);
         }
+
+        onDone();
+    }
+
+    void Ssd2119Sync::DrawRectangle(std::size_t xStart, std::size_t xEnd, std::size_t yStart, std::size_t yEnd, Color color, const infra::Function<void()>& onDone)
+    {
+        WriteCommand(entryModeRegister);
+        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+
+        WriteCommand(horizontalRamStart);
+        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscape)
+            WriteData(GetX(xEnd, yEnd));
+        else
+            WriteData(GetX(xStart, yStart));
+
+        WriteCommand(horizontalRamEnd);
+        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscape)
+            WriteData(GetX(xStart, yStart));
+        else
+            WriteData(GetX(xEnd, yEnd));
+
+        WriteCommand(verticalRamPosition);
+        if (config.orientation == Config::Orientation::portrait || config.orientation == Config::Orientation::landscapeFlip)
+            WriteData(GetY(xStart, yStart) | (GetY(xEnd, yEnd) << 8));
+        else
+            WriteData(GetY(xEnd, yEnd) | (GetY(xStart, yStart) << 8));
+
+        PrepareToDraw(xStart, yStart);
+
+        for(size_t i = ((xEnd - xStart + 1) * (yEnd - yStart + 1)); i >= 0; i--)
+            WriteData(ToDriverColor(color));
+
+        SetDimension(config.width, config.height);
+
+        onDone();
+    }
+
+    void Ssd2119Sync::DrawBackground(Color color, const infra::Function<void()>& onDone)
+    {
+        PrepareToDraw(0, 0);
+
+        const auto total = config.height * config.width;
+
+        for (std::size_t i = 0; i < total; i++)
+            WriteData(ToDriverColor(color));
+
+        onDone();
     }
 
     void Ssd2119Sync::Reset(const infra::Function<void()>& onReset)
@@ -264,61 +315,45 @@ namespace drivers::display::tft
     void Ssd2119Sync::Initialize(const Config& config)
     {
         WriteCommand(sleepMode1);
-        //WriteData(SleepMode1(true));
-        WriteData(0x0001);
+        WriteData(SleepMode1(true));
 
         WriteCommand(powerControl5);
-        //WriteData(PowerControl5(true, 0x3A));
-        WriteData(0x00BA);
+        WriteData(PowerControl5(true, 0x3A));
         WriteCommand(vcomOpt1);
-        //WriteData(0x6);
-        WriteData(0x0006);
+        WriteData(0x6);
 
         WriteCommand(oscStart);
-        //WriteData(OscillatorStart(true));
-        WriteData(0x0001);
+        WriteData(OscillatorStart(true));
 
         WriteCommand(outputControl);
-        //WriteData(OutputControl(true, true, false, false, false, false, config.height - 1));
-        WriteData(0x30EF);
+        WriteData(OutputControl(true, true, false, false, false, false, config.height - 1));
         WriteCommand(lcdDriveAcControl);
-        //WriteData(LcdDrivingWaveformControl(false, false, true, true, false, 0));
-        WriteData(0x0600);
+        WriteData(LcdDrivingWaveformControl(false, false, true, true, false, 0));
 
         WriteCommand(sleepMode1);
-        //WriteData(SleepMode1(false));
-        WriteData(0x0000);
+        WriteData(SleepMode1(false));
 
         timer.Start(std::chrono::milliseconds(30), [this]()
             {
                 WriteCommand(entryModeRegister);
-                //WriteData(entryMode);
-                WriteData(0x6830);
+                WriteData(entryMode);
 
                 WriteCommand(displayControl);
-                //WriteData(displayControlDefault);
-                WriteData(0x0033);
+                WriteData(displayControlDefault);
 
                 WriteCommand(powerControl2);
-                //WriteData(PowerControl2(Vcix2::_6_1_volts));
-                WriteData(0x0005);
+                WriteData(PowerControl2(Vcix2::_6_1_volts));
 
                 SetGamma();
 
                 WriteCommand(powerControl3);
-                //WriteData(PowerControl3(MultiplyFactorVlcd63::_2_090));
-                WriteData(0x0007);
+                WriteData(PowerControl3(MultiplyFactorVlcd63::_2_090));
                 WriteCommand(powerControl4);
-                //WriteData(PowerControl4(true, 0x10));
-                WriteData(0x3100);
+                WriteData(PowerControl4(true, 0x10));
 
                 SetDimension(this->config.width, this->config.height);
-                PrepareToDraw(0, 0);
 
-                auto total = this->config.width * this->config.height;
-
-                while (total-- > 0)
-                    WriteData(0xf0f);
+                this->onDone();
             });
     }
     
@@ -405,8 +440,7 @@ namespace drivers::display::tft
 
     void Ssd2119Sync::PrepareToDraw(std::size_t x, std::size_t y)
     {
-        // /SetPosition(GetX(x, y), GetY(x, y));
-        SetPosition(0 ,0);
+        SetPosition(GetX(x, y), GetY(x, y));
         WriteCommand(ramData);
     }
 

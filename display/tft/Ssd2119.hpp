@@ -50,7 +50,7 @@ namespace drivers::display::tft
         void DrawVerticalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone) override;
         void DrawFilledRectangle(Point point, Dimension dim, hal::Color color, const infra::Function<void()>& onDone) override;
         void DrawBackground(hal::Color color, const infra::Function<void()>& onDone) override;
-        void DrawImage(Point startPoint, const Image& image, const infra::Function<void()>& onDone) override;
+        void DrawImage(Point startPoint, const hal::Image& image, const infra::Function<void()>& onDone) override;
 
         std::size_t Width() const override;
         std::size_t Height() const override;
@@ -63,8 +63,10 @@ namespace drivers::display::tft
         void SetGamma();
         void SetDimension(std::size_t width, std::size_t height);
         void SetPosition(std::size_t x, std::size_t y);
-
         void PrepareToDraw(std::size_t x, std::size_t y);
+        void Draw1BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette);
+        void Draw4BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette);
+        void Draw8BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette);
 
         uint16_t GetX(std::size_t x, std::size_t y);
         uint16_t GetY(std::size_t x, std::size_t y);

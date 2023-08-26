@@ -295,9 +295,34 @@ namespace drivers::display::tft
         onDone();
     }
 
-    void Ssd2119Sync::DrawImage(Point startPoint, const Image& image, const infra::Function<void()>& onDone)
+    void Ssd2119Sync::DrawImage(Point startPoint, const hal::Image& image, const infra::Function<void()>& onDone)
     {
+        std::array<uint32_t, 2> palette{{ 0xffffff, 0 }};
+        WriteCommand(entryModeRegister);
+        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
+        PrepareToDraw(startPoint.x, startPoint.y);
+
+        switch (image.bitsPerPixel)
+        {
+            case 1:
+                Draw1BitPixelImage(image.subPixelOffset, image.numberOfPixels, image.image, infra::MakeByteRange(palette));
+                break;
+
+            case 4:
+                Draw4BitPixelImage(image.subPixelOffset, image.numberOfPixels, image.image, image.palette);
+                break;
+
+            case 8:
+                Draw8BitPixelImage(image.subPixelOffset, image.numberOfPixels, image.image, image.palette);
+                break;
+
+            default:
+                std::abort();
+                break;
+        }
+
+        onDone();
     }
 
     std::size_t Ssd2119Sync::Width() const
@@ -393,6 +418,62 @@ namespace drivers::display::tft
         WriteData(0x1400);
         WriteCommand(gammaControl10);
         WriteData(0x0F03);
+    }
+
+    void Ssd2119Sync::Draw1BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette)
+    {
+        auto data = image.begin();
+
+        while (numberOfPixels)
+        {
+            auto byte = *data++;
+
+            for(; (subPixelOffset < 8) && numberOfPixels; subPixelOffset++, numberOfPixels--)
+            {
+                WriteData(palette[byte >> (7 - subPixelOffset) & 0x1]);
+            }
+
+            subPixelOffset = 0;
+        }
+    }
+
+    void Ssd2119Sync::Draw4BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette)
+    {
+        auto data = image.begin();
+
+        while(numberOfPixels)
+        {
+            uint32_t byte = (*data >> 4) * 3;
+            byte = *reinterpret_cast<uint32_t *>(palette.begin() + byte) & 0x00ffffff;
+            hal::Color color1(byte);
+
+            WriteData(ToDriverColor(color1));
+
+            numberOfPixels--;
+
+            if(numberOfPixels && subPixelOffset & 0x1)
+            {
+                byte = (*data++ & 0xF) * 3;
+                byte = *reinterpret_cast<uint32_t *>(palette.begin() + byte) & 0x00ffffff;
+                hal::Color color2(byte);
+
+                WriteData(ToDriverColor(color2));
+
+                numberOfPixels--;
+            }
+        }
+    }
+
+    void Ssd2119Sync::Draw8BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette)
+    {
+        for (std::size_t i = 0; i < numberOfPixels - 4; i++)
+        {
+            uint32_t byte = image[i] * 3;
+            byte = *reinterpret_cast<uint32_t*>(palette.begin() + byte) & 0x00ffffff;
+            hal::Color color(byte);
+
+            WriteData(ToDriverColor(color));
+        }
     }
 
     void Ssd2119Sync::SetDimension(std::size_t horizontal, std::size_t vertical)

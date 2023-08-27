@@ -37,6 +37,7 @@ else()
 endif()
 
 add_subdirectory(display)
+add_subdirectory(stepper_motor)
 
 if (DRIVERS_STANDALONE)
     emil_folderize_all_targets()

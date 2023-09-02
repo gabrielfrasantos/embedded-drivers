@@ -343,12 +343,11 @@ namespace drivers::display::tft
         timer.Start(std::chrono::milliseconds(10), [this]()
             {
                 reset.Set(true);
-                timer.Start(std::chrono::milliseconds(20), [this]()
-                {
-                    this->onReset();
-                });
+                    timer.Start(std::chrono::milliseconds(20), [this]()
+                    {
+                        this->onReset();
+                    });
             });
-
     }
 
     void Ssd2119Sync::Initialize(const Config& config)

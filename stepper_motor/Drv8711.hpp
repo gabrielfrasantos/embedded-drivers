@@ -53,6 +53,8 @@ namespace drivers::stepper_motor
                 external,
             };
 
+            static const uint8_t address = 0x00;
+
             bool enableMotor = false;
             Direction direction = Direction::direct;
             bool advanceOneStep = false;
@@ -76,6 +78,8 @@ namespace drivers::stepper_motor
                 _1000us,
             };
 
+            static const uint8_t address = 0x01;
+
             BackEMFSampleThreshold backEMFSampleThreshold = BackEMFSampleThreshold::_100us;
             uint8_t fullScaleCurrent = 0xff;
         };
@@ -93,6 +97,8 @@ namespace drivers::stepper_motor
                 return (fixedOffTime * 500) + 500;
             }
 
+            static const uint8_t address = 0x02;
+
             PwmMode pwmMode = PwmMode::internalIndexer;
             uint8_t fixedOffTime = 0x30;
         };
@@ -107,6 +113,8 @@ namespace drivers::stepper_motor
 
                 return value;
             }
+
+            static const uint8_t address = 0x03;
 
             bool adaptativeBlankingTime = false;
             uint8_t blankingTime = 0x80;
@@ -129,6 +137,8 @@ namespace drivers::stepper_motor
                 return decayTransitionTime * 500;
             }
 
+            static const uint8_t address = 0x04;
+
             Mode mode = Mode::slowForIncreasingMixedForDecreasing;
             uint8_t decayTransitionTime = 0x10;
         };
@@ -150,6 +160,8 @@ namespace drivers::stepper_motor
                 _8,
                 _4,
             };
+
+            static const uint8_t address = 0x05;
 
             AssertCounter assertCounter = AssertCounter::one;
             BackEMFDivisor backEMFDivisor = BackEMFDivisor::_32;
@@ -198,6 +210,8 @@ namespace drivers::stepper_motor
                 _200mA,
             };
 
+            static const uint8_t address = 0x06;
+
             OCPThreshold oCPThreshold = OCPThreshold::_500mV;
             OCPDeglitchTime oCPDeglitchTime = OCPDeglitchTime::_4us;
             GateDriveTime lowSideGateDriveTime = GateDriveTime::_500ns;
@@ -208,6 +222,8 @@ namespace drivers::stepper_motor
 
         struct Status
         {
+            static const uint8_t address = 0x07;
+
             bool overTemperatureShutdown = false;
             bool channelAOverCurrentShutdown = false;
             bool channelBOverCurrentShutdown = false;
@@ -220,10 +236,10 @@ namespace drivers::stepper_motor
 
         struct Helpers
         {
+            static constexpr std::array<float, 4> isGain {{ 5.0f, 10.0f, 20.0f, 40.0f }};
+
             constexpr float MaximumCurrentInAmperes(Control::AmplifierGain gain, float torque, float senseResistorValue)
             {
-                static const std::array<float, 4> isGain {{ 5.0f, 10.0f, 20.0f, 40.0f }};
-
                 return (2.75f * torque) / (256.0f * senseResistorValue * isGain.at(static_cast<std::size_t>(gain)));
             }
 
@@ -233,11 +249,44 @@ namespace drivers::stepper_motor
             }
         };
 
-        Drv8711Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& sleep);
+        Drv8711Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& sleep, const infra::Function<void()>& onDone);
 
+        void Reset(const infra::Function<void()>& onDone);
+        void EnableSleep(const infra::Function<void()>& onDone);
+        void DisableSleep(const infra::Function<void()>& onDone);
 
+        void EnableMotor(const infra::Function<void()>& onDone);
+        void DisableMotor(const infra::Function<void()>& onDone);
+
+        void GoOneStep(const infra::Function<void()>& onDone);
+
+        void SetMicroSteps(Control::Step microSteps, const infra::Function<void()>& onDone);
+        void SetDeadTime(Control::DeadTime deadTime, const infra::Function<void()>& onDone);
+        void SetStallDetection(Control::StallDetection stallDetection, const infra::Function<void()>& onDone);
+        void SetBackEMFSampleThreshold(Torque::BackEMFSampleThreshold backEmfSampleThreshold, const infra::Function<void()>& onDone);
+        void SetIndexer(Off::PwmMode indexer, const infra::Function<void()>& onDone);
+        void SetOffTime(uint8_t offtime, const infra::Function<void()>& onDone);
+
+        void SetAmplifierGainAndTorque(Control::AmplifierGain gain, uint8_t torque, const infra::Function<void()>& onDone);
+
+        void ConfigureOffTime(const Off& off, const infra::Function<void()>& onDone);
+        void ConfigureBlankingTime(const Blank& blank, const infra::Function<void()>& onDone);
+        void ConfigureDecay(const Decay& decay, const infra::Function<void()>& onDone);
+        void ConfigureStall(const Stall& stall, const infra::Function<void()>& onDone);
+        void ConfigureDrive(const Drive& drive, const infra::Function<void()>& onDone);
+
+        void GetControlRegister(const infra::Function<void(const Control&)>& onDone);
+        void GetTorqueRegister(const infra::Function<void(const Torque&)>& onDone);
+        void GetOffTimeRegister(const infra::Function<void(const Off&)>& onDone);
+        void GetBlankRegister(const infra::Function<void(const Blank&)>& onDone);
+        void GetDecayRegister(const infra::Function<void(const Decay&)>& onDone);
+        void GetStallRegister(const infra::Function<void(const Stall&)>& onDone);
+        void GetDriveRegister(const infra::Function<void(const Drive&)>& onDone);
+        void GetStatusRegister(const infra::Function<void(const Status&)>& onDone);
 
     private:
+        uint16_t Read(uint8_t address);
+        void Write(uint8_t address, uint16_t data);
 
     private:
         hal::SynchronousSpi& spi;
@@ -245,8 +294,15 @@ namespace drivers::stepper_motor
         hal::OutputPin reset;
         hal::OutputPin sleep;
         infra::TimerSingleShot timer;
-        infra::Function<void()> onReset;
         infra::Function<void()> onDone;
+        Control control;
+        Torque torque;
+        Off off;
+        Blank blank;
+        Decay decay;
+        Stall stall;
+        Drive drive;
+        Status status;
     };
 }
 

@@ -1,5 +1,4 @@
 add_library(drivers.stepper_motor ${HAL_TI_EXCLUDE_FROM_ALL} STATIC)
-install(TARGETS drivers.stepper_motor EXPORT halTivaTargets)
 
 target_include_directories(drivers.stepper_motor PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../>"

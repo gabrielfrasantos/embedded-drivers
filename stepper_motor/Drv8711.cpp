@@ -349,7 +349,7 @@ namespace drivers::stepper_motor
     {
         auto data = Read(Status::address);
 
-        std::copy_n(&status, 1, &data);
+        std::copy_n(reinterpret_cast<uint8_t*>(&data), 1, reinterpret_cast<uint8_t*>(&status));
 
         onDone(status);
     }
@@ -364,6 +364,8 @@ namespace drivers::stepper_motor
         spi.SendAndReceive(infra::MakeConstByteRange(input), infra::MakeByteRange(output), hal::SynchronousSpi::Action::stop);
 
         chipSelect.Set(false);
+
+        return output & 0x3ff;
     }
 
     void Drv8711Sync::Write(uint8_t address, uint16_t data)

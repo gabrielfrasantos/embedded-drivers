@@ -1,5 +1,5 @@
 add_library(drivers.display.tft ${HAL_TI_EXCLUDE_FROM_ALL} STATIC)
-install(TARGETS drivers.display.tft EXPORT halTivaTargets)
+install(TARGETS drivers.display.tft)
 
 target_include_directories(drivers.display.tft PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../>"

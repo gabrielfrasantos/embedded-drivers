@@ -59,15 +59,7 @@ namespace drivers::stepper_motor
         , sleep(sleep, true)
         , onDone(onDone)
     {
-        reset.Set(true);
-        timer.Start(std::chrono::milliseconds(1), [this]()
-            {
-                this->reset.Set(false);
-                this->timer.Start(std::chrono::milliseconds(1), [this]()
-                    {
-                        this->onDone();
-                    });
-            });
+        Reset(onDone);
     }
 
     void Drv8711Sync::Reset(const infra::Function<void()>& onDone)

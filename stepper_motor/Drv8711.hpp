@@ -92,7 +92,7 @@ namespace drivers::stepper_motor
                 externalControl,
             };
 
-            constexpr uint32_t FixedOffTimeInNanoSeconds()
+            constexpr uint32_t FixedOffTimeInNanoSeconds() const
             {
                 return (fixedOffTime * 500) + 500;
             }
@@ -105,7 +105,7 @@ namespace drivers::stepper_motor
 
         struct Blank
         {
-            constexpr uint32_t BlankingTimeInNanoSeconds()
+            constexpr uint32_t BlankingTimeInNanoSeconds() const
             {
                 auto value = blankingTime * 20;
 
@@ -132,7 +132,7 @@ namespace drivers::stepper_motor
                 automatic,
             };
 
-            constexpr uint32_t DecayTransitionTimeInNanoSeconds()
+            constexpr uint32_t DecayTransitionTimeInNanoSeconds() const
             {
                 return decayTransitionTime * 500;
             }

@@ -15,13 +15,13 @@ if (DRIVERS_STANDALONE)
     FetchContent_Declare(
         emil
         GIT_REPOSITORY https://github.com/gabrielfrasantos/embedded-infra-lib.git
-        GIT_TAG        af9bda39c192ae9199485cd7a86b6802aa2eb65f # Unreleased
+        GIT_TAG        230ca4750f210485ff99b3fea1f9161948fc4d26 # Unreleased
     )
 
     FetchContent_MakeAvailable(emil)
 endif()
 
-project(DRIVERS LANGUAGES C CXX ASM VERSION 2.0.0) # x-release-please-version
+project(drivers LANGUAGES C CXX ASM VERSION 2.0.0) # x-release-please-version
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)

@@ -230,11 +230,11 @@ namespace drivers::display::tft
         std::abort();
     }
 
-    void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Rgb565> color, const infra::Function<void()>&)
+    void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Rgb565> color, const infra::Function<void()>& onDone)
     {
         SetArea(area);
-        for (hal::Color c : color)
-            WriteData(ToDriverColor(c));
+        for (auto c : color)
+            WriteData(c);
 
         SetDimension(config.width, config.height);
         onDone();

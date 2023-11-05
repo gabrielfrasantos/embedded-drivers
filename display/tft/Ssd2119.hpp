@@ -45,6 +45,11 @@ namespace drivers::display::tft
 
         Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const infra::Function<void()>& onDone, const Config& config = Config());
 
+        void Flush(const Area& area, infra::MemoryRange<hal::Color> color, const infra::Function<void()>& onDone) override;
+        void Flush(const Area& area, infra::MemoryRange<hal::Rgb332> color, const infra::Function<void()>& onDone) override;
+        void Flush(const Area& area, infra::MemoryRange<hal::Rgb565> color, const infra::Function<void()>& onDone) override;
+        void Flush(const Area& area, infra::MemoryRange<hal::Argb8888> color, const infra::Function<void()>& onDone) override;
+
         void DrawPixel(Point point, hal::Color color, const infra::Function<void()>& onDone) override;
         void DrawHorizontalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone) override;
         void DrawVerticalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone) override;
@@ -54,6 +59,7 @@ namespace drivers::display::tft
 
         std::size_t Width() const override;
         std::size_t Height() const override;
+        std::size_t PixelSize() const override;
 
     private:
         void WriteData(uint16_t data);
@@ -63,6 +69,7 @@ namespace drivers::display::tft
         void SetGamma();
         void SetDimension(std::size_t width, std::size_t height);
         void SetPosition(std::size_t x, std::size_t y);
+        void SetArea(const Area& area);
         void PrepareToDraw(std::size_t x, std::size_t y);
         void Draw1BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette);
         void Draw4BitPixelImage(uint8_t subPixelOffset, std::size_t numberOfPixels, infra::MemoryRange<uint8_t> image, infra::MemoryRange<uint8_t> palette);

@@ -1,4 +1,5 @@
 #include "drivers/display/tft/Ssd2119.hpp"
+#include "hal/interfaces/DisplayLcd.hpp"
 
 namespace drivers::display::tft
 {
@@ -190,6 +191,11 @@ namespace drivers::display::tft
 
             return ((((c) & 0x00f80000) >> 8) | (((c) & 0x0000fc00) >> 5) | (((c) & 0x000000f8) >> 3));
         }
+
+        constexpr uint16_t ToDriverColor(const hal::Rgb565& color)
+        {
+            return ((((color) & 0x00f80000) >> 8) | (((color) & 0x0000fc00) >> 5) | (((color) & 0x000000f8) >> 3));
+        }
     }
 
     Ssd2119Sync::Ssd2119Sync(hal::SynchronousSpi& spi, hal::GpioPin& chipSelect, hal::GpioPin& reset, hal::GpioPin& dataOrCommand, const infra::Function<void()>& onDone, const Config& config)
@@ -207,6 +213,36 @@ namespace drivers::display::tft
             {
                 Initialize(this->config);
             });
+    }
+
+    void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Color> color, const infra::Function<void()>& onDone)
+    {
+        SetArea(area);
+        for (hal::Color c : color)
+            WriteData(ToDriverColor(c));
+
+        SetDimension(config.width, config.height);
+        onDone();
+    }
+
+    void Ssd2119Sync::Flush(const Area&, infra::MemoryRange<hal::Rgb332>, const infra::Function<void()>&)
+    {
+        std::abort();
+    }
+
+    void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Rgb565> color, const infra::Function<void()>&)
+    {
+        SetArea(area);
+        for (hal::Color c : color)
+            WriteData(ToDriverColor(c));
+
+        SetDimension(config.width, config.height);
+        onDone();
+    }
+
+    void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Argb8888>, const infra::Function<void()>&)
+    {
+        std::abort();
     }
 
     void Ssd2119Sync::DrawPixel(Point point, hal::Color color, const infra::Function<void()>& onDone)
@@ -333,6 +369,11 @@ namespace drivers::display::tft
     std::size_t Ssd2119Sync::Height() const
     {
         return config.height;
+    }
+
+    std::size_t Ssd2119Sync::PixelSize() const
+    {
+        return static_cast<std::size_t>(hal::DisplayLcd::ColorScheme::rgb565);
     }
 
     void Ssd2119Sync::Reset(const infra::Function<void()>& onReset)
@@ -477,14 +518,42 @@ namespace drivers::display::tft
 
     void Ssd2119Sync::SetDimension(std::size_t horizontal, std::size_t vertical)
     {
-        WriteCommand(verticalRamPosition);
-        WriteData((vertical - 1) << 8);
-
         WriteCommand(horizontalRamStart);
         WriteData(0);
 
         WriteCommand(horizontalRamEnd);
         WriteData(horizontal - 1);
+
+        WriteCommand(verticalRamPosition);
+        WriteData((vertical - 1) << 8);
+    }
+
+    void Ssd2119Sync::SetArea(const Area& area)
+    {
+        WriteCommand(entryModeRegister);
+        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+
+        WriteCommand(horizontalRamStart);
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
+            WriteData(GetX(area.x2, area.y2));
+        else
+            WriteData(GetX(area.x1, area.y1));
+
+        WriteCommand(horizontalRamEnd);
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
+            WriteData(GetX(area.x1, area.y1));
+        else
+            WriteData(GetX(area.x2, area.y2));
+
+        WriteCommand(verticalRamPosition);
+        if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscapeFlip)
+            WriteData(GetY(area.x1, area.y1) | (GetY(area.x2, area.y2) << 8));
+        else
+            WriteData(GetY(area.x2, area.y2) | (GetY(area.x1, area.y1) << 8));
+
+        PrepareToDraw(area.x1, area.y1);
+
+        //
     }
 
     void Ssd2119Sync::SetPosition(std::size_t x, std::size_t y)

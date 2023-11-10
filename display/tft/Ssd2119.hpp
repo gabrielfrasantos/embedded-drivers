@@ -31,8 +31,8 @@ namespace drivers::display::tft
 
             enum class RgbInterface
             {
+                useControlPins,
                 ignoreControlPins,
-                useControlPIns
             };
 
             std::size_t width = 320;

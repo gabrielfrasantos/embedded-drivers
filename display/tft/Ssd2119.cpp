@@ -233,6 +233,7 @@ namespace drivers::display::tft
     void Ssd2119Sync::Flush(const Area& area, infra::MemoryRange<hal::Rgb565> color, const infra::Function<void()>& onDone)
     {
         SetArea(area);
+
         for (auto c : color)
             WriteData(c);
 
@@ -255,7 +256,7 @@ namespace drivers::display::tft
     void Ssd2119Sync::DrawHorizontalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
-        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+        WriteData((entryMode & 0xff00) | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
         PrepareToDraw(point.x, point.y);
 
@@ -272,7 +273,7 @@ namespace drivers::display::tft
     void Ssd2119Sync::DrawVerticalLine(Point point, std::size_t length, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
-        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).vertical);
+        WriteData((entryMode & 0xff00) | direction.at(static_cast<uint8_t>(config.orientation)).vertical);
 
         PrepareToDraw(point.x, point.y);
 
@@ -289,7 +290,7 @@ namespace drivers::display::tft
     void Ssd2119Sync::DrawFilledRectangle(Point point, Dimension dim, hal::Color color, const infra::Function<void()>& onDone)
     {
         WriteCommand(entryModeRegister);
-        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+        WriteData((entryMode & 0xff00) | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
         WriteCommand(horizontalRamStart);
         if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
@@ -335,7 +336,7 @@ namespace drivers::display::tft
     {
         std::array<uint32_t, 2> palette{{ 0xffffff, 0 }};
         WriteCommand(entryModeRegister);
-        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+        WriteData((entryMode & 0xff00) | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
         PrepareToDraw(startPoint.x, startPoint.y);
 
@@ -373,7 +374,7 @@ namespace drivers::display::tft
 
     std::size_t Ssd2119Sync::PixelSize() const
     {
-        return static_cast<std::size_t>(hal::DisplayLcd::ColorScheme::rgb565);
+        return static_cast<std::size_t>(hal::DisplayLcd::ColorScheme::rgb565) / 8;
     }
 
     void Ssd2119Sync::Reset(const infra::Function<void()>& onReset)
@@ -431,6 +432,7 @@ namespace drivers::display::tft
                 WriteData(PowerControl4(true, 0x10));
 
                 SetDimension(this->config.width, this->config.height);
+                SetPosition(0, 0);
 
                 this->onDone();
             });
@@ -531,7 +533,7 @@ namespace drivers::display::tft
     void Ssd2119Sync::SetArea(const Area& area)
     {
         WriteCommand(entryModeRegister);
-        WriteData(entryMode | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
+        WriteData((entryMode & 0xff00) | direction.at(static_cast<uint8_t>(config.orientation)).horizontal);
 
         WriteCommand(horizontalRamStart);
         if (config.orientation == Orientation::portrait || config.orientation == Orientation::landscape)
@@ -552,8 +554,6 @@ namespace drivers::display::tft
             WriteData(GetY(area.x2, area.y2) | (GetY(area.x1, area.y1) << 8));
 
         PrepareToDraw(area.x1, area.y1);
-
-        //
     }
 
     void Ssd2119Sync::SetPosition(std::size_t x, std::size_t y)
